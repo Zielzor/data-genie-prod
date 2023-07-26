@@ -189,34 +189,42 @@ def render_manipulation_page():
         # Filter the dataset
         st.subheader("Filter Dataset")
         columns = st.multiselect("Columns: ", df.columns)
-        filter = st.radio("Chose by:", ("include","exclude"))
+        filter = st.radio("Chose by:", ("include", "exclude"))
 
         if filter == "exclude":
             columns = [col for col in df.columns if col not in columns]
         
         filtered_df = df[columns]
-        filtered_df
+        st.write(filtered_df)
 
-        
         # Export filtered/transformed dataset
         st.sidebar.subheader("Export Filtered/Transformed Dataset")
-        export_format = st.sidebar.selectbox("Select export format", ["csv", "xlsx", "txt"],key="export-format")
+        export_format = st.sidebar.selectbox("Select export format", ["csv", "xlsx", "txt"], key="export-format")
         export_filename = st.sidebar.text_input("Enter export file name", key="export-name")
 
-        if st.sidebar.button("Export",key="export_filtered"):
+        # FileDownloader to enable download and save to "export" directory
+        if st.sidebar.button("Export", key="export_filtered"):
+            export_directory = os.path.join(os.getcwd(), "export")
+            if not os.path.exists(export_directory):
+                os.makedirs(export_directory)
+
             if export_format == "csv":
-                filtered_df.to_csv(export_filename + ".csv", index=False)
+                file_path = os.path.join(export_directory, export_filename + ".csv")
+                filtered_df.to_csv(file_path, index=False)
             elif export_format == "xlsx":
-                filtered_df.to_excel(export_filename + ".xlsx", index=False)
+                file_path = os.path.join(export_directory, export_filename + ".xlsx")
+                filtered_df.to_excel(file_path, index=False)
             elif export_format == "txt":
-                filtered_df.to_csv(export_filename + ".txt", sep="\t", index=False)
-            st.sidebar.success("Export successful!")
+                file_path = os.path.join(export_directory, export_filename + ".txt")
+                filtered_df.to_csv(file_path, sep="\t", index=False)
+
+            st.sidebar.success(f"Export successful! Navigate to Exported Files for download")
         
         # Pivot table
         st.subheader("Pivot Table")
         pivot_cols = st.multiselect("Select columns for pivot table", df.columns)
-        pivot_values = st.selectbox("Select values for pivot table",df.columns)
-        pivot_agg = st.selectbox("Select aggregation function", ["sum","count"])
+        pivot_values = st.selectbox("Select values for pivot table", df.columns)
+        pivot_agg = st.selectbox("Select aggregation function", ["sum", "count"])
         
         if pivot_cols and pivot_values and pivot_agg:
             pivot_table = df.pivot_table(index=pivot_cols, values=pivot_values, aggfunc=pivot_agg)
@@ -279,7 +287,18 @@ def render_display_files():
         files = os.listdir(directory_path)
         if len(files) > 0:
             for file_name in files:
-                st.write(file_name)
+                # Create a checkbox to select the file for deletion
+                delete_file = st.checkbox(f"Delete {file_name}", key=f"checkbox_{file_name}")
+                if delete_file:
+                    confirm_delete = st.checkbox("Are you sure?")
+                    if confirm_delete:
+                        # Full path of the file to delete
+                        file_path = os.path.join(directory_path, file_name)
+                        try:
+                            os.remove(file_path)
+                            st.success(f"{file_name} has been deleted.")
+                        except Exception as e:
+                            st.error(f"Error deleting {file_name}: {str(e)}")
 
                 # Create a download link for each file
                 file_path = os.path.join(directory_path, file_name)
